@@ -45,14 +45,8 @@ Phone Case           299            249            -16.7%        +22.1%
 USB-C Hub            899            1089           +21.1%        +8.7%
 ```
 
-## 💼 Interview Talking Points
-1. Why Gradient Boosting over linear regression? *(captures non-linear elasticity, interaction effects)*
-2. Why `minimize_scalar` over grid search? *(continuous bounded optimisation, much faster)*
-3. How would you handle multi-product pricing with cross-elasticity? *(multivariate NLP or MIP with substitution terms)*
-
 ## 📁 Files
 ```
-03_dynamic_pricing_engine/
 ├── dynamic_pricing.py   # Full pipeline
 ├── app.py               # Streamlit interactive dashboard with sliders
 ├── requirements.txt
