@@ -15,6 +15,9 @@ st.set_page_config(page_title="Dynamic Pricing Engine", layout="wide")
 st.title("💰 Dynamic Pricing Engine for Retail")
 st.markdown("**DS Layer**: Demand elasticity model &nbsp;|&nbsp; **OR Layer**: Nonlinear profit maximisation")
 
+if "results" not in st.session_state:
+    st.session_state.results = None
+
 np.random.seed(42)
 
 PRODUCTS = {
@@ -48,11 +51,20 @@ with st.spinner("Training demand elasticity models..."):
 
 with st.sidebar:
     st.header("⚙️ Settings")
-    product = st.selectbox("Select Product", list(PRODUCTS.keys()))
-    is_weekend = st.checkbox("Weekend pricing?", value=False)
-    comp_ratio = st.slider("Competitor price ratio", 0.7, 1.3, 1.05, 0.05)
-    cost_per_km = st.number_input("Override unit cost (₹)", value=PRODUCTS[product]["cost"])
-    run = st.button("🚀 Optimise Price", type="primary")
+
+    with st.form("pricing_form"):
+        product = st.selectbox("Select Product", list(PRODUCTS.keys()))
+        is_weekend = st.checkbox("Weekend pricing?", value=False)
+        comp_ratio = st.slider("Competitor price ratio", 0.7, 1.3, 1.05, 0.05)
+        cost_per_km = st.number_input(
+            "Override unit cost (₹)",
+            value=PRODUCTS[product]["cost"]
+        )
+
+        run = st.form_submit_button(
+            "🚀 Optimise Price",
+            type="primary"
+        )
 
 cfg = PRODUCTS[product]
 bp, cost, stock = cfg["base_price"], cfg["cost"], cfg["stock"]
@@ -91,6 +103,17 @@ if run:
         profits.append((p - cost_per_km) * d)
         demands.append(d)
 
+    st.session_state.results = {
+    "product": product,
+    "bp": bp,
+    "opt_price": opt_price,
+    "opt_demand": opt_demand,
+    "uplift": uplift,
+    "prices_range": prices_range.tolist(),
+    "profits": profits,
+    "demands": demands,
+    }
+
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=prices_range, y=profits, name="Profit", line=dict(color="#5364FF", width=2)))
     fig.add_vline(x=opt_price, line_dash="dash", line_color="green", annotation_text=f"Optimal ₹{opt_price:,}")
@@ -108,5 +131,42 @@ if run:
     st.plotly_chart(fig2, use_container_width=True)
 
     st.success(f"✅ Recommended price: **₹{opt_price:,}** (vs current ₹{bp:,}) — Profit uplift: **{uplift:+.1f}%**")
+elif st.session_state.results:
+
+    r = st.session_state.results
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    c1.metric("Current Price", f"₹{r['bp']:,}")
+    c2.metric(
+        "Optimal Price",
+        f"₹{r['opt_price']:,}",
+        f"{((r['opt_price']/r['bp'])-1)*100:+.1f}%"
+    )
+    c3.metric("Expected Demand", f"{r['opt_demand']:.0f} units")
+    c4.metric("Profit Uplift", f"{r['uplift']:+.1f}%")
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=r["prices_range"],
+        y=r["profits"],
+        name="Profit"
+    ))
+    fig.add_vline(
+        x=r["opt_price"],
+        line_dash="dash",
+        annotation_text=f"Optimal ₹{r['opt_price']:,}"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(
+        x=r["prices_range"],
+        y=r["demands"],
+        name="Demand"
+    ))
+    fig2.add_vline(x=r["opt_price"], line_dash="dash")
+    st.plotly_chart(fig2, use_container_width=True)
+
 else:
     st.info("👈 Select a product and click **Optimise Price**")
